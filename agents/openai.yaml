@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Bootstrap"
+  short_description: "Project setup guidance from repeatable stack defaults"
+  default_prompt: "Use $project-bootstrap to decide the stack and setup steps for a new project."
