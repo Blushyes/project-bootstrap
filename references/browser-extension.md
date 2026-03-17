@@ -41,19 +41,24 @@ Use this recipe when the user wants a new browser extension project.
    - `entrypoints/options/`
    - `entrypoints/install/`
    - `entrypoints/update/`
-9. Add a shared messaging module such as `src/shared/messaging.ts`:
+9. Build the content UI with `Solid` components rendered inside a Shadow DOM host:
+   - keep the main content logic in `entrypoints/content.tsx`
+   - create a Shadow DOM container instead of appending raw DOM directly to the page
+   - render the content UI with `render(...)` from `solid-js/web`
+   - keep content-specific styles scoped to that Shadow DOM
+10. Add a shared messaging module such as `src/shared/messaging.ts`:
    - import `defineExtensionMessaging` from `@webext-core/messaging`
    - define one `ProtocolMap` that describes every cross-context message
    - export the messaging helpers from that single module
-10. Use that shared messaging module across extension contexts:
+11. Use that shared messaging module across extension contexts:
    - background registers handlers with `onMessage`
    - popup, content, or other entrypoints call `sendMessage`
    - if the background needs to message a content script, pass `tabId`
-11. Add package scripts at minimum:
+12. Add package scripts at minimum:
    - `dev`
    - `build`
    - `compile`
-12. Apply the restrained UI conventions from [standards.md](./standards.md).
+13. Apply the restrained UI conventions from [standards.md](./standards.md).
 
 ## Project Shape
 
@@ -65,6 +70,17 @@ Keep the initial project structure simple:
 - one options/settings surface
 - install/update pages only if the product needs onboarding or release notes
 - content script only when the extension interacts with page DOM
+- content UI mounted through Shadow DOM and rendered by SolidJS components
+
+## Content UI Guidance
+
+When the extension needs visible in-page UI:
+
+- use a content script
+- mount UI inside a Shadow DOM host
+- render `Solid` components into that host
+- keep content CSS isolated from the page by scoping it to the Shadow DOM
+- avoid directly mixing extension UI markup into the page's normal DOM tree unless there is a strong reason
 
 ## Messaging Guidance
 
