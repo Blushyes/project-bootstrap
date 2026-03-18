@@ -54,11 +54,17 @@ Use this recipe when the user wants a new browser extension project.
    - background registers handlers with `onMessage`
    - popup, content, or other entrypoints call `sendMessage`
    - if the background needs to message a content script, pass `tabId`
-12. Add package scripts at minimum:
+12. Configure WXT to reuse one project-local Chrome profile:
+   - in `wxt.config.ts`, set `webExt.chromiumProfile` to a path inside the repo such as `.wxt/chromium-profile`
+   - set `webExt.keepProfileChanges` to `true`
+   - before starting dev, confirm that profile directory exists and create it if missing
+   - a small script such as `scripts/ensure-dev-profile.mjs` is a good default
+13. Add package scripts at minimum:
    - `dev`
    - `build`
    - `compile`
-13. Apply the restrained UI conventions from [standards.md](./standards.md).
+   - if using a profile-ensure script, run it from `predev`
+14. Apply the restrained UI conventions from [standards.md](./standards.md).
 
 ## Project Shape
 
@@ -71,6 +77,7 @@ Keep the initial project structure simple:
 - install/update pages only if the product needs onboarding or release notes
 - content script only when the extension interacts with page DOM
 - content UI mounted through Shadow DOM and rendered by SolidJS components
+- one project-local Chromium profile reused by WXT during development
 
 ## Content UI Guidance
 
@@ -96,6 +103,15 @@ For page-context communication from a content script to an injected script or we
 
 - `defineCustomEventMessaging` when iframe communication is not needed
 - `defineWindowMessaging` when iframe communication is needed
+
+## Dev Profile Guidance
+
+Prefer a stable project-local Chrome profile for WXT development instead of letting each run create a fresh anonymous profile.
+
+- keep the profile under the repo, for example `.wxt/chromium-profile`
+- ensure the directory exists before running `wxt`
+- keep profile changes so extension login state and test setup survive restarts
+- do not assume the directory already exists; create it explicitly
 
 ## Conventions
 
