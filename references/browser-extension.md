@@ -2,6 +2,12 @@
 
 Use this recipe when the user wants a new browser extension project.
 
+Bootstrap path:
+
+- Inspect with `scripts/project-bootstrap info browser-extension`
+- Validate environment with `scripts/project-bootstrap doctor browser-extension`
+- Create from template with `scripts/project-bootstrap create browser-extension <project-name> --dest <parent-dir>`
+
 ## Recommended Stack
 
 - `WXT`
@@ -24,47 +30,27 @@ Use this recipe when the user wants a new browser extension project.
 
 ## Creation Steps
 
-1. Create the project with WXT using `pnpm dlx wxt@latest init`.
-2. Choose the Solid starter when WXT asks for the framework.
-3. Install frontend styling dependencies with `pnpm add -D tailwindcss @tailwindcss/vite`.
-4. Install typed messaging with `pnpm add @webext-core/messaging`.
-5. Configure Tailwind in `wxt.config.ts` with the Vite plugin.
-6. Create a shared CSS entry such as `assets/app.css` and add `@import "tailwindcss";`.
-7. Keep `tsconfig.json` aligned with WXT + Solid:
+1. Use the local CLI to create the project from the browser-extension template.
+2. Keep `WXT + Solid` as the extension baseline unless the user explicitly wants a different stack.
+3. Keep `Tailwind CSS v4` wired through the WXT Vite config.
+4. Keep `@webext-core/messaging` as the default typed messaging layer across extension contexts.
+5. Keep `tsconfig.json` aligned with WXT + Solid:
    - extend `./.wxt/tsconfig.json`
    - set `jsx` to `preserve`
    - set `jsxImportSource` to `solid-js`
-8. Organize extension entrypoints explicitly:
+6. Keep the main entrypoints explicit:
    - `entrypoints/background.ts`
    - `entrypoints/content.tsx`
    - `entrypoints/popup/`
    - `entrypoints/options/`
    - `entrypoints/install/`
    - `entrypoints/update/`
-9. Build the content UI with `Solid` components rendered inside a Shadow DOM host:
-   - keep the main content logic in `entrypoints/content.tsx`
-   - create a Shadow DOM container instead of appending raw DOM directly to the page
-   - render the content UI with `render(...)` from `solid-js/web`
-   - keep content-specific styles scoped to that Shadow DOM
-10. Add a shared messaging module such as `src/shared/messaging.ts`:
-   - import `defineExtensionMessaging` from `@webext-core/messaging`
-   - define one `ProtocolMap` that describes every cross-context message
-   - export the messaging helpers from that single module
-11. Use that shared messaging module across extension contexts:
-   - background registers handlers with `onMessage`
-   - popup, content, or other entrypoints call `sendMessage`
-   - if the background needs to message a content script, pass `tabId`
-12. Configure WXT to reuse one project-local Chrome profile:
-   - in `wxt.config.ts`, set `webExt.chromiumProfile` to a path inside the repo such as `.wxt/chromium-profile`
-   - set `webExt.keepProfileChanges` to `true`
-   - before starting dev, confirm that profile directory exists and create it if missing
-   - a small script such as `scripts/ensure-dev-profile.mjs` is a good default
-13. Add package scripts at minimum:
-   - `dev`
-   - `build`
-   - `compile`
-   - if using a profile-ensure script, run it from `predev`
-14. Apply the restrained UI conventions from [standards.md](./standards.md).
+7. Keep content UI rendered by `Solid` components inside a Shadow DOM host.
+8. Reuse one project-local Chromium profile through WXT:
+   - `webExt.chromiumProfile`
+   - `webExt.keepProfileChanges = true`
+   - `predev` should ensure the directory exists before `wxt`
+9. Apply the restrained UI conventions from [standards.md](./standards.md).
 
 ## Project Shape
 
@@ -93,11 +79,11 @@ When the extension needs visible in-page UI:
 
 Prefer `@webext-core/messaging` over hand-written `browser.runtime.sendMessage` wrappers when multiple extension contexts need to communicate.
 
-- Put the protocol in one place, for example `src/shared/messaging.ts`
-- Model the protocol with a `ProtocolMap`
-- Keep request and response types explicit
-- Let background own side effects and orchestration
-- Let popup/content/options send typed requests instead of importing background logic directly
+- put the protocol in one place, for example `src/shared/messaging.ts`
+- model the protocol with a `ProtocolMap`
+- keep request and response types explicit
+- let background own side effects and orchestration
+- let popup/content/options send typed requests instead of importing background logic directly
 
 For page-context communication from a content script to an injected script or webpage, `@webext-core/messaging/page` is also available. The official docs recommend:
 
@@ -113,11 +99,19 @@ Prefer a stable project-local Chrome profile for WXT development instead of lett
 - keep profile changes so extension login state and test setup survive restarts
 - do not assume the directory already exists; create it explicitly
 
+## Template Boundary
+
+For this project type:
+
+- keep deterministic boilerplate in the template
+- keep stack decisions and implementation rules in these references
+- use [template-boundary.md](./template-boundary.md) when deciding whether a concern belongs in the template
+
 ## Conventions
 
-- Prefer `WXT` defaults instead of hand-rolled browser extension wiring.
-- Prefer `Solid` signals and simple components over unnecessary abstraction.
-- Prefer `@webext-core/messaging` for cross-entrypoint messaging inside the extension.
-- Prefer neutral, low-chrome UI instead of generic dashboard styling.
-- Do not add speculative business logic during bootstrap.
-- Do not guess types; define them.
+- prefer `WXT` defaults instead of hand-rolled browser extension wiring
+- prefer `Solid` signals and simple components over unnecessary abstraction
+- prefer `@webext-core/messaging` for cross-entrypoint messaging inside the extension
+- prefer neutral, low-chrome UI instead of generic dashboard styling
+- do not add speculative business logic during bootstrap
+- do not guess types; define them

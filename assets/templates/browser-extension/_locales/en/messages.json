@@ -1,0 +1,11 @@
+{
+  "extName": {
+    "message": "__DISPLAY_NAME__"
+  },
+  "extShortName": {
+    "message": "__DISPLAY_NAME__"
+  },
+  "extDescription": {
+    "message": "__PROJECT_DESCRIPTION__"
+  }
+}

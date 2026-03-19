@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@layer base {
+  :host {
+    color: #171717;
+    font-family:
+      'SF Pro Text',
+      'SF Pro Display',
+      'Inter',
+      'Segoe UI',
+      sans-serif;
+  }
+}

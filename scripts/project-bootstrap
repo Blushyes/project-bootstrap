@@ -1,0 +1,180 @@
+#!/usr/bin/env node
+
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+
+const CLI_PATH = resolve(process.argv[1] ?? '.');
+const ROOT = resolve(dirname(CLI_PATH), '..');
+const TEMPLATE_ROOT = join(ROOT, 'assets', 'templates');
+const REFERENCES_ROOT = join(ROOT, 'references');
+
+const PROJECT_TYPES = {
+  'browser-extension': {
+    dir: 'browser-extension',
+    summary: 'WXT + Solid + Tailwind CSS v4 browser extension starter',
+    docs: join(REFERENCES_ROOT, 'browser-extension.md'),
+  },
+};
+
+function fail(message) {
+  console.error(`[ERROR] ${message}`);
+  process.exit(1);
+}
+
+function usage() {
+  console.log(`Usage:
+  project-bootstrap list
+  project-bootstrap info <type>
+  project-bootstrap doctor <type>
+  project-bootstrap create <type> <project-name> --dest <parent-dir>
+  project-bootstrap --help`);
+}
+
+function titleCase(slug) {
+  return slug
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function slugify(value) {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '');
+
+  if (slug.length === 0) fail('project name must contain at least one letter or digit');
+  return slug;
+}
+
+function parseCreateArgs(args) {
+  const positional = [];
+  let dest;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const value = args[index];
+    if (value === '--dest') {
+      dest = args[index + 1];
+      index += 1;
+      continue;
+    }
+    positional.push(value);
+  }
+
+  if (positional.length !== 2) fail('create expects <type> <project-name>');
+  if (!dest) fail('create requires --dest <parent-dir>');
+
+  return {
+    type: positional[0],
+    projectName: positional[1],
+    dest,
+  };
+}
+
+function replaceTokensInFile(filePath, replacements) {
+  const content = readFileSync(filePath, 'utf8');
+  let next = content;
+  for (const [key, value] of Object.entries(replacements)) {
+    next = next.replaceAll(`__${key}__`, value);
+  }
+  writeFileSync(filePath, next);
+}
+
+function walkFiles(dirPath) {
+  const entries = readdirSync(dirPath, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const fullPath = join(dirPath, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...walkFiles(fullPath));
+      continue;
+    }
+    files.push(fullPath);
+  }
+  return files;
+}
+
+function copyDirectoryContents(sourceDir, targetDir) {
+  const entries = readdirSync(sourceDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const sourcePath = join(sourceDir, entry.name);
+    const targetPath = join(targetDir, entry.name);
+    cpSync(sourcePath, targetPath, { recursive: true });
+  }
+}
+
+function ensureDir(dirPath) {
+  mkdirSync(dirPath, { recursive: true });
+}
+
+function copyTemplate(type, projectName, dest) {
+  const projectType = PROJECT_TYPES[type];
+  if (!projectType) fail(`unsupported project type '${type}'`);
+
+  const templatePath = join(TEMPLATE_ROOT, projectType.dir);
+  if (!existsSync(templatePath)) fail(`template not found: ${templatePath}`);
+
+  const slug = slugify(projectName);
+  const targetRoot = resolve(dest, slug);
+  if (existsSync(targetRoot)) fail(`destination already exists: ${targetRoot}`);
+
+  ensureDir(dirname(targetRoot));
+  ensureDir(targetRoot);
+  copyDirectoryContents(templatePath, targetRoot);
+
+  const replacements = {
+    PROJECT_SLUG: slug,
+    DISPLAY_NAME: titleCase(slug),
+    PACKAGE_NAME: slug,
+    PROJECT_DESCRIPTION: `${titleCase(slug)} browser extension.`,
+  };
+
+  for (const filePath of walkFiles(targetRoot)) {
+    replaceTokensInFile(filePath, replacements);
+  }
+
+  console.log(`[OK] Created ${type} at ${targetRoot}`);
+  console.log('Next steps:');
+  console.log(`  cd ${targetRoot}`);
+  console.log('  pnpm install');
+  console.log('  pnpm dev');
+}
+
+const [, , command, ...rest] = process.argv;
+
+if (!existsSync(TEMPLATE_ROOT)) fail(`templates directory not found: ${TEMPLATE_ROOT}`);
+if (!existsSync(REFERENCES_ROOT)) fail(`references directory not found: ${REFERENCES_ROOT}`);
+
+if (!command || command === '--help' || command === '-h' || command === 'help') {
+  usage();
+  process.exit(0);
+}
+
+if (command === 'list') {
+  console.log('Supported project types:');
+  for (const [name, meta] of Object.entries(PROJECT_TYPES)) {
+    console.log(`  ${name}: ${meta.summary}`);
+  }
+  process.exit(0);
+}
+
+if (command === 'info' || command === 'doctor') {
+  const type = rest[0];
+  if (!type) fail(`${command} expects <type>`);
+  const projectType = PROJECT_TYPES[type];
+  if (!projectType) fail(`unsupported project type '${type}'`);
+  console.log(readFileSync(projectType.docs, 'utf8'));
+  process.exit(0);
+}
+
+if (command === 'create') {
+  const parsed = parseCreateArgs(rest);
+  copyTemplate(parsed.type, parsed.projectName, parsed.dest);
+  process.exit(0);
+}
+
+usage();
+process.exit(1);
